@@ -17,24 +17,14 @@ void printWiFiStatus() {
 }
 
 void initWiFi() {
-  //WiFi.mode(WIFI_STA);  //Optional
-
-  
+ 
     WiFi.disconnect();
-    delay(1000);
+    delay(100);
     
     WiFi.begin(ssid, password);
     WiFi.setTxPower(WIFI_POWER_5dBm);
-    //WiFi.begin(ssid);
-    //WiFi.setAutoConnect(1);
-    //WiFi.setAutoReconnect(1);
 
-    // >>>> the fix <<<<<
-    uint8_t status = WiFi.waitForConnectResult();
-
-
-    Serial.println("\nConnecting");
-
+    Serial.print("Connecting");
     while(WiFi.status() != WL_CONNECTED){
         Serial.print(".");
         delay(1000);
@@ -46,13 +36,12 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   initWiFi();
-  Serial.println("EndSetup");
 }
 
 void loop() {
   printWiFiStatus();
   if (!WiFi.isConnected()){
-Serial.println("WiFi reconnect");
+    Serial.println("WiFi reconnect");
     WiFi.reconnect();
   }
   delay(5000);
