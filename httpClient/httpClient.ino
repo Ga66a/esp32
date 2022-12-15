@@ -3,12 +3,16 @@
 #include "ArduinoJson.h"
 
 #define LED 2
+#define uS_TO_S_FACTOR 1000000
+#define mS_TO_S_FACTOR 1000
+#define SECONDS_TO_SLEEP 60
+#define DEEP_SLEEP false
 
 // Replace with your network credentials (STATION)
 const char* ssid = "gabba";
 const char* password = "qwerty123456";
 const String serverName = "https://iot.cloud.ga66a.ru";
-const String apiPath = "/api/v1";
+const String apiPath = "/api/v1/iot";
 
 void printWiFiStatus() {
   Serial.println("");
@@ -59,8 +63,8 @@ void serverPost() {
   ///LED
   JsonObject indicator_0 = indicators.createNestedObject();
   indicator_0["name"] = "LED";
-  indicator_0["pin"] = 2;
-  indicator_0["currentState"] = digitalRead(2);
+  indicator_0["pin"] = LED;
+  indicator_0["currentState"] = digitalRead(LED);
   indicator_0["type"] = "Switch";
 
   ///TEST_TEST
@@ -104,9 +108,9 @@ void serverGet() {
     JsonArray indicators = jsonDoc.as<JsonArray>();
 
     for (JsonObject indicator : indicators) {
-      uint8_t pin =indicator["pin"].as<uint8_t>();
-      uint8_t newState =indicator["targetState"].as<uint8_t>();
-      Serial.println((String)"TargerState: "+ newState+" High: "+HIGH);
+      uint8_t pin = indicator["pin"].as<uint8_t>();
+      uint8_t newState = indicator["targetState"].as<uint8_t>();
+      Serial.println((String) "TargerState: " + newState + " High: " + HIGH);
       digitalWrite(pin, newState);
     }
   } else {
@@ -132,6 +136,14 @@ void loop() {
   } else {
     serverExchange();
   }
-  delay(10000);
-  // put your main code here, to run repeatedly:
+  //delay(10000);
+  Serial.println((String) "Going to sleep for "+SECONDS_TO_SLEEP+" seconds.");
+  Serial.flush();
+  delay(1000);
+  if (DEEP_SLEEP) {
+    esp_sleep_enable_timer_wakeup(SECONDS_TO_SLEEP * uS_TO_S_FACTOR);
+    esp_deep_sleep_start();
+  } else {
+    delay(SECONDS_TO_SLEEP * mS_TO_S_FACTOR);
+  }
 }
