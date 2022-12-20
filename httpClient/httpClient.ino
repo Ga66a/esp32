@@ -10,13 +10,15 @@
 #define mS_TO_S_FACTOR 1000
 #define SECONDS_TO_SLEEP 60
 #define DEEP_SLEEP true
-
+#define WIFI_CONNECT_TIMEOUT 200  //*100ms
 
 // Replace with your network credentials (STATION)
+const int voltage_measuring_pin = 36;
 const char* ssid = "iot-network";
 const char* password = "iot-pa$$w0rd";
 const String serverName = "https://iot.cloud.ga66a.ru";
 const String apiPath = "/api/v1/iot";
+//int ads_value = 0;
 
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -41,9 +43,14 @@ void initWiFi() {
   WiFi.setTxPower(WIFI_POWER_5dBm);
 
   Serial.print("Connecting");
+  int attempt = 0;
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
-    delay(1000);
+    if (attempt >= WIFI_CONNECT_TIMEOUT) {
+      ESP.restart();
+    }
+    delay(100);
+    ++attempt;
   }
 }
 void serverExchange() {
@@ -52,22 +59,11 @@ void serverExchange() {
 }
 
 void serverPost() {
-  // float humidity = dht.readHumidity();
-  // float temperature = dht.readTemperature();
-
-
-  // char humidity[10];
-  // dtostrf(dht.readHumidity(), 5, 2, humidity);
-  // char temperature[10];
-  // dtostrf(dht.readTemperature(), 5, 2, temperature);
-
-
-  // Serial.println((String) "Temperature: " + temperature);
-  // Serial.println((String) "Humidity: " + humidity);
-
+  double ads_value = analogRead(voltage_measuring_pin);
+  double voltage = (ads_value * 3.3 / 4095) / 0.2;
   String path = serverName + apiPath + "/device/";
 
-  StaticJsonDocument<400> device;
+  StaticJsonDocument<1024> device;
   device["mak"] = WiFi.macAddress();
   JsonArray indicators = device.createNestedArray("indicators");
 
@@ -83,14 +79,21 @@ void serverPost() {
   indicator_1["name"] = "DHT22T";
   indicator_1["pin"] = DHTPIN;
   indicator_1["indication"] = dht.readTemperature();
-  indicator_1["type"] = "Sensor";
+  indicator_1["type"] = "Temperature";
 
   ///DHT Temperature
   JsonObject indicator_2 = indicators.createNestedObject();
   indicator_2["name"] = "DHT22H";
   indicator_2["pin"] = DHTPIN;
   indicator_2["indication"] = dht.readHumidity();
-  indicator_2["type"] = "Sensor";
+  indicator_2["type"] = "Humidity";
+
+  //Voltage
+  JsonObject indicator_3 = indicators.createNestedObject();
+  indicator_3["name"] = "ACC";
+  indicator_3["pin"] = voltage_measuring_pin;
+  indicator_3["indication"] = voltage;
+  indicator_3["type"] = "Voltage";
 
   String request;
   serializeJson(device, request);
@@ -141,6 +144,8 @@ void serverGet() {
 void setup() {
   Serial.begin(115200);
   pinMode(LED, OUTPUT);
+  //analogReadResolution(12);
+  pinMode(voltage_measuring_pin, INPUT);
   initWiFi();
   dht.begin();
 }
@@ -159,7 +164,7 @@ void loop() {
   //delay(10000);
   Serial.println((String) "Going to sleep for " + SECONDS_TO_SLEEP + " seconds.");
   Serial.flush();
-  delay(1000);
+  delay(100);
   if (DEEP_SLEEP) {
     esp_sleep_enable_timer_wakeup(SECONDS_TO_SLEEP * uS_TO_S_FACTOR);
     esp_deep_sleep_start();
