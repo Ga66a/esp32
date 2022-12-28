@@ -9,7 +9,7 @@
 #define uS_TO_S_FACTOR 1000000
 #define mS_TO_S_FACTOR 1000
 #define SECONDS_TO_SLEEP 60
-#define DEEP_SLEEP true
+//#define DEEP_SLEEP true
 #define WIFI_CONNECT_TIMEOUT 200  //*100ms
 
 // Replace with your network credentials (STATION)
@@ -19,6 +19,8 @@ const char* password = "iot-pa$$w0rd";
 const String serverName = "https://iot.cloud.ga66a.ru";
 const String apiPath = "/api/v1/iot";
 //int ads_value = 0;
+const char* firmwareUrl = "http://test/test/test";
+bool deepSleep = true;
 
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -64,30 +66,32 @@ void serverPost() {
   String path = serverName + apiPath + "/device/";
 
   StaticJsonDocument<1024> device;
-  device["mak"] = WiFi.macAddress();
+  device["mac"] = WiFi.macAddress();
+  device["firmwareUrlCurrent"] = firmwareUrl;
+  if (deepSleep) {
+    device["deepSleep"] = "true";
+  } else {
+    device["deepSleep"] = "false";
+  }
   JsonArray indicators = device.createNestedArray("indicators");
-
   ///LED
   JsonObject indicator_0 = indicators.createNestedObject();
   indicator_0["name"] = "LED";
   indicator_0["pin"] = LED;
   indicator_0["currentState"] = digitalRead(LED);
   indicator_0["type"] = "Switch";
-
   ///DHT Temperature
   JsonObject indicator_1 = indicators.createNestedObject();
   indicator_1["name"] = "DHT22T";
   indicator_1["pin"] = DHTPIN;
   indicator_1["indication"] = dht.readTemperature();
   indicator_1["type"] = "Temperature";
-
   ///DHT Temperature
   JsonObject indicator_2 = indicators.createNestedObject();
   indicator_2["name"] = "DHT22H";
   indicator_2["pin"] = DHTPIN;
   indicator_2["indication"] = dht.readHumidity();
   indicator_2["type"] = "Humidity";
-
   //Voltage
   JsonObject indicator_3 = indicators.createNestedObject();
   indicator_3["name"] = "ACC";
@@ -165,7 +169,7 @@ void loop() {
   Serial.println((String) "Going to sleep for " + SECONDS_TO_SLEEP + " seconds.");
   Serial.flush();
   delay(100);
-  if (DEEP_SLEEP) {
+  if (deepSleep) {
     esp_sleep_enable_timer_wakeup(SECONDS_TO_SLEEP * uS_TO_S_FACTOR);
     esp_deep_sleep_start();
   } else {
